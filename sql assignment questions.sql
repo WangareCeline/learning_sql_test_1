@@ -34,23 +34,79 @@ on a."DoctorID" = d."DoctorID" ;
 
 --4. Prepare a list that shows all patients together with any treatments they have received, ensuring
 --that patients without treatments also appear in the results.
-
+select a."AppointmentID" ,a."PatientID", concat("FirstName", "LastName") as patient_name, "TreatmentType"
+from patients p 
+left join appointments a 
+on p."PatientID" = a."PatientID" 
+join treatments t 
+on a."AppointmentID" = t."AppointmentID";
 
 --5. Identify any treatments recorded in the system that do not have a matching appointment.
+select t."AppointmentID" ,"TreatmentID", "TreatmentType"
+from treatments t 
+left outer join appointments a
+on t."AppointmentID" = a."AppointmentID"
+where t."AppointmentID" is Null;
 
 --6. Create a summary that shows how many appointments each doctor has handled, ordered from
 --the highest to the lowest count.
+select d."DoctorID", concat("FirstName", "LastName") as Doctor_name, count(a."DoctorID") as appointments_handled
+from doctors d 
+join appointments a 
+on d."DoctorID" =a."DoctorID" 
+group by d."DoctorID", doctor_name 
+order by appointments_handled  desc;
 
 --7. Produce a list of doctors who have handled more than twenty appointments, showing their
 --doctor ID, specialization, and total appointment count.
+select * 
+from
+	(select d."DoctorID", d."Specialization" , count(a."DoctorID") as total_appointment_count
+	from doctors d 
+	join appointments a 
+	on d."DoctorID" =a."DoctorID" 
+	group by d."DoctorID", d."Specialization" 
+	order by total_appointment_count   desc)
+where total_appointment_count >20;
 
 --8. Retrieve the details of all patients who have had appointments with doctors whose
 --specialization is “Cardiology.”
+select p."PatientID" ,concat(p."FirstName", p."LastName") as patient_name ,p."Gender" ,p."DateOfBirth" ,p."Email" ,p."PhoneNumber" , a."DoctorID", d."Specialization"
+from patients p 
+join appointments a 
+on p."PatientID" = a."PatientID" 
+join doctors d 
+on a."DoctorID" = d."DoctorID" 
+where d."Specialization" = 'Cardiology'
 
 --9. Produce a list of patients who have at least one bill that remains unpaid.
+select *
+from
+	(select p."PatientID", concat(p."FirstName", p."LastName") as patient_name ,a."AdmissionID" , count(b."OutstandingAmount") as unpaid
+	from patients p 
+	join admissions a 
+	on p."PatientID" =a."PatientID" 
+	join bills b 
+	on a."AdmissionID" =b."AdmissionID" 
+	group by p."PatientID" ,patient_name ,a."AdmissionID" 
+	order by unpaid desc )
+where unpaid > 0;
 
 --10. Retrieve all bills whose total amount is higher than the average total amount for all bills in
 --the system.
+select *
+from
+	(SELECT
+    "BillID",
+    "TotalAmount",
+    AVG(SUM("TotalAmount")) OVER() AS average_overall_bill
+	FROM
+	    bills
+	GROUP BY
+	    "BillID", "TotalAmount"
+	ORDER BY
+	    average_overall_bill)
+where "TotalAmount" > average_overall_bill;
 
 --11. For each patient in the database, identify their most recent appointment and list it along with
 --the patient’s ID.
