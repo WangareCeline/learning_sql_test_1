@@ -110,35 +110,158 @@ where "TotalAmount" > average_overall_bill;
 
 --11. For each patient in the database, identify their most recent appointment and list it along with
 --the patient’s ID.
+WITH RankedAppointments AS (
+    SELECT
+        "PatientID",
+        "AppointmentDate",
+        ROW_NUMBER() OVER (
+            PARTITION BY "PatientID"
+            ORDER BY "AppointmentDate" DESC
+        ) as app_num
+    FROM
+        Appointments
+)
+SELECT
+    ra."PatientID",
+    ra."AppointmentDate"
+FROM
+    RankedAppointments ra
+WHERE
+    ra.app_num = 1;
 
 --12. For every appointment in the system, assign a sequence number that ranks each patient’s
 --appointments from most recent to oldest.
+SELECT
+    "PatientID",
+    "AppointmentDate",
+    ROW_NUMBER() OVER (
+        PARTITION BY 'PatientID'
+        ORDER BY "AppointmentDate" desc
+    ) AS AppointmentSequenceRank
+FROM
+    appointments a 
+ORDER BY
+    "PatientID",
+    AppointmentSequenceRank;
 
 --13. Generate a report showing the number of appointments per day for October 2021, including a
 --running total across the month.
+select * , ROW_NUMBER() OVER (
+        PARTITION BY "AppointmentDate" 
+        ORDER by a."AppointmentID" asc
+    ) AS AppointmentSequenceRank
+from  appointments a 
+where "AppointmentDate"  between '2021-10-1' and '2021-10-31'
+order by "AppointmentDate" 
+;
 
 --14. Using a temporary query structure, calculate the average, minimum, and maximum total bill
 --amount, and then return these values in a single result set.
+with aggregate_values as(
+	select 
+		AVG(b."TotalAmount" ) as average_total_bill,
+		MIN(b."TotalAmount") as minimum_total_bill,
+		MAX(b."TotalAmount" ) as maximum_total_bill
+	from bills b
+)
+ select * from aggregate_values ;
 
 --15. Build a query that identifies all patients who currently have an outstanding balance, based on
 --information from admissions and billing records.
+select a."PatientID", a."AdmissionID", b."OutstandingAmount"
+from admissions a 
+join bills b 
+on a."AdmissionID" = b."AdmissionID" 
+where b."OutstandingAmount" is not Null;
 
 --16. Create a query that generates all dates from January 1 to January 15, 2021, and show how
 --many appointments occurred on each of those dates.
+WITH DateSeries AS (
+    SELECT GENERATE_SERIES('2021-01-01'::date, '2021-01-15'::date, '1 day'::interval) AS appointment_date
+)
+SELECT
+    ds.appointment_date::date,
+    COALESCE(COUNT(a."AppointmentID"), 0) AS total_appointments
+FROM
+    DateSeries ds
+LEFT JOIN
+    Appointments a ON ds.appointment_date::date = a."AppointmentDate"::date
+GROUP BY
+    ds.appointment_date
+ORDER BY
+    ds.appointment_date;
 
 --17. Add a new patient record to the Patients table, providing appropriate information for all
 --required fields.
+insert into patients("PatientID", "FirstName", "LastName", "Gender", "DateOfBirth", "Email", "PhoneNumber")
+values (
+	'P1001',
+	'Ariana',
+	'Grande',
+	'F',
+	'1993-6-26',
+	'arig@gmail.com',
+	'555-011001'
+);
 
 --18. Modify the appointments table so that any appointment with a NULL status is updated to
 --show “Scheduled.”
+UPDATE
+    appointments a 
+SET
+    "Status" = 'Scheduled'
+WHERE
+    "Status" ='';
 
 --19. Remove all prescription records that belong to appointments marked as “Cancelled.”
+delete FROM
+    prescriptions p 
+WHERE
+    "AppointmentID" IN (
+        SELECT
+            "AppointmentID"
+        FROM
+            appointments a
+        WHERE
+            "Status" = 'Cancelled'
+    );
 
 --20. Create a stored procedure that adds a new record to the Doctors table.
 --The procedure should accept the doctor’s ID, first name, last name, specialization, email, and
 --phone number as input parameters.
 --After creating the procedure, call it using a set of sample doctor details to insert a new doctor
 --into the database.
+create or replace procedure add_doc_records(
+	doc_id varchar(50),
+	f_name varchar(50),
+	l_name varchar(50),
+	spec varchar(50),
+	email varchar(50),
+	phone_no varchar(50)
+)
+language plpgsql
+as $$
+	begin
+		insert into doctors(
+			"DoctorID",
+			"FirstName",
+			"LastName",
+			"Specialization",
+			"Email",
+			"PhoneNumber"
+		)
+		values(
+			doc_id,
+			f_name,
+			l_name,
+			spec,
+			email,
+			phone_no
+		);
+	end;
+$$;
+
+call add_doc_records('D1001', 'Cynthia', 'Erivo', 'Neurology', 'cynthia.erivo@gmail.com', '555-021001');
 
 --21. Create a stored procedure that records a new appointment and automatically performs
 --validation before inserting.
