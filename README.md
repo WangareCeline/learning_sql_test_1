@@ -77,6 +77,7 @@ It's still work in progress but soon i'll be done.
      --amount, and then return these values in a single result set.
      Created a cte where i did all the aggregations 
      Selected all from the cte
+     
      --15. Build a query that identifies all patients who currently have an outstanding balance, based on
      --information from admissions and billing records.
      Joined the admissions table to the bills table on admissionId
