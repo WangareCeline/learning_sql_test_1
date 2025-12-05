@@ -270,7 +270,6 @@ call add_doc_records('D1001', 'Cynthia', 'Erivo', 'Neurology', 'cynthia.erivo@gm
 --Inside the procedure, implement the following logic:
 --* Verify that the patient exists in the Patients table.
 --* Verify that the doctor exists in the Doctors table.
-
 --* If either does not exist, prevent the insertion and return an error message.
 --* If both exist, insert the appointment into the Appointments table.
 --After creating the procedure, call it with sample data to demonstrate both a successful and a
@@ -379,4 +378,5 @@ CALL new_appointment(
     'Scheduled',
     'NUR001'
 );
+
 
