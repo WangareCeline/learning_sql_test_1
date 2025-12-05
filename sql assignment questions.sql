@@ -275,3 +275,108 @@ call add_doc_records('D1001', 'Cynthia', 'Erivo', 'Neurology', 'cynthia.erivo@gm
 --* If both exist, insert the appointment into the Appointments table.
 --After creating the procedure, call it with sample data to demonstrate both a successful and a
 --failed insertion attempt.
+
+CREATE OR REPLACE PROCEDURE new_appointment(
+    appointment_id VARCHAR(50), 
+    patient_id VARCHAR(50), 
+    doctor_id VARCHAR(50), 
+    appointment_date DATE, 
+    status VARCHAR(50),
+    nurse_id VARCHAR(50)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    patient_exists BOOLEAN;
+    doctor_exists BOOLEAN;
+    error_message TEXT;
+BEGIN
+    -- Check if patient exists
+    SELECT EXISTS(
+        SELECT 1 FROM Patients 
+        WHERE "PatientID" = patient_id
+    ) INTO patient_exists;
+    
+    -- Check if doctor exists
+    SELECT EXISTS(
+        SELECT 1 FROM Doctors 
+        WHERE "DoctorID" = doctor_id
+    ) INTO doctor_exists;
+    
+    -- Validation logic
+    IF NOT patient_exists AND NOT doctor_exists THEN
+        error_message := 'Error: Both Patient ID ' || patient_id || 
+                        ' and Doctor ID ' || doctor_id || ' do not exist.';
+        RAISE EXCEPTION '%', error_message;
+    ELSIF NOT patient_exists THEN
+        error_message := 'Error: Patient ID ' || patient_id || ' does not exist.';
+        RAISE EXCEPTION '%', error_message;
+    ELSIF NOT doctor_exists THEN
+        error_message := 'Error: Doctor ID ' || doctor_id || ' does not exist.';
+        RAISE EXCEPTION '%', error_message;
+    ELSE
+        -- Insert the appointment if both exist
+        INSERT INTO Appointments(
+            "AppointmentID", 
+            "PatientID", 
+            "DoctorID", 
+            "AppointmentDate", 
+            "Status",
+            "NurseID"
+        )
+        VALUES(
+            appointment_id, 
+            patient_id, 
+            doctor_id, 
+            appointment_date, 
+            status,
+            nurse_id
+        );
+        
+        RAISE NOTICE 'Appointment % successfully created for patient % with doctor %.', 
+            appointment_id, patient_id, doctor_id;
+    END IF;
+END;
+$$;
+
+-- calling the new_appointment procedure
+-- 1. Successful insertion (assuming these IDs exist in your tables)
+CALL new_appointment(
+    'A1001',
+    'P1001',  -- Must exist in Patients table
+    'D1001',  -- Must exist in Doctors table
+    '2021-03-15',
+    'Completed',
+    'N0158'
+);
+
+-- 2. Failed insertion - Patient doesn't exist
+CALL new_appointment(
+    'A1002',
+    'P1002',  -- This ID doesn't exist
+    'D1001',
+    '2021-03-15',
+    'Completed',
+    'N0516'
+);
+
+-- 3. Failed insertion - Doctor doesn't exist
+CALL new_appointment(
+    'A1003',
+    'P1001',
+    'D1002',  -- This ID doesn't exist
+    '2021-03-15',
+    'Completed',
+    'N0092'
+);
+
+-- 4. Failed insertion - Both don't exist
+CALL new_appointment(
+    'APT1004',
+    'P1003',
+    'D1003',
+    '2021-03-15',
+    'Scheduled',
+    'NUR001'
+);
+
